@@ -3,8 +3,8 @@
 
 if __name__ == "__main__":
     import os
-    import nifiapi
-    from nifiapi import ControllerService
+    import nifipy
+    from nifipy import ControllerService
     import logging
     logging.basicConfig(level=logging.ERROR)
     logging.getLogger(nifiapi.__name__).setLevel(logging.INFO)

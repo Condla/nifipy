@@ -1,4 +1,4 @@
-# nifiapi
+# nifipy
 
 A Python Wrapper for the Nifi REST API
 
@@ -20,14 +20,14 @@ pip install requests
 
 * Restart a controller service:
 ```
-from nifiapi import ControllerService
+from nifipy import ControllerService
 cs = ControllerService("http://nifi.example.com:9090", "02439ee-015c-1000-ffff-ffffc7e2dd96")
 cs.restart()
 ```
 
 * Stop a processor:
 ```
-from nifiapi import Processor
+from nifipy import Processor
 pr = Processor("http://nifi.example.com:9090", "ere880-ty34-1000-ffff-ffffdfk4343"")
 pr.stop()
 ```
