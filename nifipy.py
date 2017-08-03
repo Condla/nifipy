@@ -8,20 +8,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 PROCESSOR = "Processor"
-FLOW = "Flow"
+ROOTGROUP = "Root"
+CONTROLLER_SERVICE = "Controller Service"
 
 component_types = [
         PROCESSOR,
-        "Controller_service",
-        "Flow"
+        CONTROLLER_SERVICE,
+        ROOTGROUP
         ]
 
 class NifiConnection(object):
  
     COMPONENT_ENDPOINT_TEMPLATES = {
         PROCESSOR: "{url_base}/nifi-api/processors/{component_id}",
-        "Controller Service": "{url_base}/nifi-api/controller-services/{component_id}",
-        FLOW: "{url_base}/flow/controller-services/"
+        CONTROLLER_SERVICE: "{url_base}/nifi-api/controller-services/{component_id}",
+        ROOTGROUP: "{url_base}/nifi-api/flow/process-groups/root/{subpath}"
         }
 
     # TODO: handle authentication and security features in this class as well!
@@ -33,15 +34,16 @@ class NifiConnection(object):
         return Processor(self, processor_id)
 
     def get_processors(self):
-        url = self.COMPONENT_ENDPOINT_TEMPLATES[FLOW].format(self.url_base)
-        self._get(url)
         pass
 
     def get_controller_service(self, controller_service_id):
         return ControllerService(self, controller_service_id)
 
     def get_controller_services(self):
-        pass
+        url_template = self.COMPONENT_ENDPOINT_TEMPLATES[ROOTGROUP]
+        url = url_template.format(url_base=self.url_base, subpath="controller-services")
+        response = self._get(url)
+        return response.json()
 
     def _get(self, url):
         return requests.get(url)
@@ -51,8 +53,7 @@ class NifiConnection(object):
  
     def get_info(self, url):
         response = self._get(url)
-        response_dict = response.json()
-        return response_dict
+        return response.json()
 
     def get_min_info(self, url):
         response_dict = self.get_info(url)
@@ -105,6 +106,14 @@ class NifiComponent(object):
 
     def __repr__(self):
         return "{}: url: {}".format(self.__class__, self.url)
+
+
+class ProcessGroup(NifiComponent):
+    component_type = "Process Group"
+
+    def __init__(self, nifi_connection, process_group_id):
+        NifiComponent.__init__(self, nifi_connection, process_group_id)
+
 
 
 class Processor(NifiComponent):
