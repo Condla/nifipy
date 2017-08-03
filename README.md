@@ -18,17 +18,26 @@ pip install requests
 
 ## Examples
 
-* Restart a controller service:
+* Get all controller services of root process group:
 ```
-from nifipy import ControllerService
-cs = ControllerService("http://nifi.example.com:9090", "02439ee-015c-1000-ffff-ffffc7e2dd96")
+from nifipy import NifiConnection
+con = NifiConnection("http://nifi.example.com:9090")
+css = con.get_controller_services()
+````
+
+* Restart a specific controller service with ID 02439ee-015c-1000-ffff-ffffc7e2dd96:
+```
+from nifipy import NifiConnection
+con = NifiConnection("http://nifi.example.com:9090")
+cs = con.get_controller_service("02439ee-015c-1000-ffff-ffffc7e2dd96")
 cs.restart()
 ```
 
-* Stop a processor:
+* Stop a processor with ID 02439ee-015c-1000-ffff-ffffc7e2dd96:
 ```
-from nifipy import Processor
-pr = Processor("http://nifi.example.com:9090", "ere880-ty34-1000-ffff-ffffdfk4343"")
+from nifipy import NifiConnection
+con = NifiConnection("http://nifi.example.com:9090")
+pr = con.get_processor("02439ee-015c-1000-ffff-ffffc7e2dd96")
 pr.stop()
 ```
 

@@ -8,13 +8,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 PROCESSOR = "Processor"
-ROOTGROUP = "Root"
+FLOW = "Flow"
 CONTROLLER_SERVICE = "Controller Service"
 
 component_types = [
         PROCESSOR,
         CONTROLLER_SERVICE,
-        ROOTGROUP
+        FLOW 
         ]
 
 class NifiConnection(object):
@@ -22,7 +22,7 @@ class NifiConnection(object):
     COMPONENT_ENDPOINT_TEMPLATES = {
         PROCESSOR: "{url_base}/nifi-api/processors/{component_id}",
         CONTROLLER_SERVICE: "{url_base}/nifi-api/controller-services/{component_id}",
-        ROOTGROUP: "{url_base}/nifi-api/flow/process-groups/root/{subpath}"
+        FLOW: "{url_base}/nifi-api/flow/process-groups/{process_group}/{subpath}"
         }
 
     # TODO: handle authentication and security features in this class as well!
@@ -39,11 +39,20 @@ class NifiConnection(object):
     def get_controller_service(self, controller_service_id):
         return ControllerService(self, controller_service_id)
 
-    def get_controller_services(self):
-        url_template = self.COMPONENT_ENDPOINT_TEMPLATES[ROOTGROUP]
-        url = url_template.format(url_base=self.url_base, subpath="controller-services")
+    def get_controller_services(self, process_group = "root"):
+        url_template = self.COMPONENT_ENDPOINT_TEMPLATES[FLOW]
+        url = url_template.format(url_base=self.url_base, process_group=process_group, subpath="controller-services")
         response = self._get(url)
-        return response.json()
+        response_json = response.json()
+        controller_service_ids = [
+                controller_service["component"]["id"] 
+                for controller_service in response_json["controllerServices"]
+                ]
+        controller_services = [
+                ControllerService(self, controller_service_id) 
+                for controller_service_id in controller_service_ids
+                ] 
+        return controller_services
 
     def _get(self, url):
         return requests.get(url)
