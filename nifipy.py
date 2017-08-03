@@ -6,62 +6,129 @@ import json
 import logging
 
 logger = logging.getLogger(__name__)
-class NifiComponent(object):
-    
-    def __init__(self, url_base, component_id):
+
+PROCESSOR = "Processor"
+FLOW = "Flow"
+
+component_types = [
+        PROCESSOR,
+        "Controller_service",
+        "Flow"
+        ]
+
+class NifiConnection(object):
+ 
+    COMPONENT_ENDPOINT_TEMPLATES = {
+        PROCESSOR: "{url_base}/nifi-api/processors/{component_id}",
+        "Controller Service": "{url_base}/nifi-api/controller-services/{component_id}",
+        FLOW: "{url_base}/flow/controller-services/"
+        }
+
+    # TODO: handle authentication and security features in this class as well!
+
+    def __init__(self, url_base):
         self.url_base = url_base
-        self.component_id = component_id
-        self.url = self.url_template.format(url_base=url_base, component_id=component_id)
-    
-    def get_state(self):
-        response = requests.get(self.url)
+
+    def get_processor(self, processor_id):
+        return Processor(self, processor_id)
+
+    def get_processors(self):
+        url = self.COMPONENT_ENDPOINT_TEMPLATES[FLOW].format(self.url_base)
+        self._get(url)
+        pass
+
+    def get_controller_service(self, controller_service_id):
+        return ControllerService(self, controller_service_id)
+
+    def get_controller_services(self):
+        pass
+
+    def _get(self, url):
+        return requests.get(url)
+
+    def _post(self, url, data):
+        return requests.put(url, data=data, headers={"Content-Type": "application/json"})
+ 
+    def get_info(self, url):
+        response = self._get(url)
         response_dict = response.json()
         return response_dict
 
-    def get_min_state(self):
-        response_dict = self.get_state()
+    def get_min_info(self, url):
+        response_dict = self.get_info(url)
         request_dict = {}
-        request_dict["component"] = {}
-        request_dict["component"]["id"] = self.component_id
-        request_dict["revision"] = {"version": response_dict["revision"]["version"]}
+        request_dict["component"] = {
+                "id": response_dict["component"]["id"]
+                }
+        request_dict["revision"] = {
+                "version": response_dict["revision"]["version"]
+                }
         return request_dict
 
-    def do(self, state):
-        request_dict = self.get_min_state()
+    def change_state(self, url, state):
+        request_dict = self.get_min_info(url)
         request_dict["component"]["state"] = state
-        response = requests.put(self.url, data = json.dumps(request_dict), headers={"Content-Type": "application/json"})
+        response = self._post(url, data = json.dumps(request_dict))
         logger.info(response.status_code)
         if not response.status_code == 200:
             print(response.text)
 
+    def get_referencing_components(self, url):
+        request_dict = self.get_info(url)
+        referencing_component_dicts = request_dict["component"]["referencingComponents"]
+        referencing_component_infos = [
+                (referencing_component_dict["component"]['id'], referencing_component_dict["component"]["referenceType"])
+                for referencing_component_dict in referencing_component_dicts
+                ]
+        referencing_processors = [
+                Processor(self, referencing_component_info[0])
+                for referencing_component_info in referencing_component_infos
+                if referencing_component_info[1] == PROCESSOR]
+
+        # TODO: implement others referencing component types
+        referencing_components = referencing_processors
+        return referencing_components
+
+class NifiComponent(object):
+
+    component_type = None
+    
+    def __init__(self, nifi_connection, component_id):
+        self.component_id = component_id
+        self.nifi_connection = nifi_connection
+        self.url_base = self.nifi_connection.url_base
+        self.template = self.nifi_connection.COMPONENT_ENDPOINT_TEMPLATES[self.component_type]
+        self.url = self.template.format(url_base=self.url_base, component_id=component_id)
+
     def __str__(self):
-        return "{}: {}".format(self.__class__, self.component_id)
+        return "{}: url: {}".format(self.__class__, self.url)
 
     def __repr__(self):
-        return "{}: {}".format(self.__class__, self.component_id)
+        return "{}: url: {}".format(self.__class__, self.url)
 
 
 class Processor(NifiComponent):
-    url_template = "{url_base}/nifi-api/processors/{component_id}"
 
-    def __init__(self, url_base, processor_id):
-        NifiComponent.__init__(self, url_base, processor_id)
+    component_type = "Processor"
+
+    def __init__(self, nifi_connection, processor_id):
+        NifiComponent.__init__(self, nifi_connection, processor_id)
 
     def start(self):
         logger.info("starting {}".format(self))
-        self.do("RUNNING")
+        self.nifi_connection.change_state(self.url, "RUNNING")
     
     def stop(self):
         logger.info("stopping {}".format(self))
-        self.do("STOPPED")
+        self.nifi_connection.change_state(self.url, "STOPPED")
     
     def enable(self):
         logger.info("enabling {}".format(self))
-        self.do("STOPPED")
+        self.nifi_connection.change_state(self.url, "STOPPED")
     
     def disable(self):
         logger.info("disabling {}".format(self))
-        self.do("DISABLED")
+        self.nifi_connection.change_state(self.url, "DISABLED")
 
     def restart(self):
         self.stop()
@@ -70,24 +137,16 @@ class Processor(NifiComponent):
     
 
 class ControllerService(NifiComponent):
-    url_template = "{url_base}/nifi-api/controller-services/{component_id}"
 
-    def __init__(self, url_base, controller_id):
-        NifiComponent.__init__(self, url_base, controller_id)
+    component_type = "Controller Service"
+
+    def __init__(self, nifi_connection, controller_service_id):
+        NifiComponent.__init__(self, nifi_connection, controller_service_id)
     
 
     def get_referencing_components(self):
-        request_dict = self.get_state()
-        referencing_component_dicts = request_dict["component"]["referencingComponents"]
-        referencing_component_ids = [
-                referencing_component_dict["component"]['id']
-                for referencing_component_dict in referencing_component_dicts
-                ]
-        referencing_components = [
-                Processor(self.url_base, referencing_component_id)
-                for referencing_component_id in referencing_component_ids
-                ]
-        return referencing_components
+        return self.nifi_connection.get_referencing_components(self.url)
+ 
 
     def stop_referencing_components(self):
         [ component.stop() for component in self.get_referencing_components() ]
@@ -97,11 +156,11 @@ class ControllerService(NifiComponent):
     
     def enable(self):
         logger.info("enabling {}".format(self))
-        self.do("ENABLED")
+        self.nifi_connection.change_state(self.url, "ENABLED")
     
     def disable(self):
         logger.info("disabling {}".format(self))
-        self.do("DISABLED")
+        self.nifi_connection.change_state(self.url, "DISABLED")
 
     def restart(self):
         self.stop_referencing_components()
@@ -111,6 +170,3 @@ class ControllerService(NifiComponent):
         self.enable()
         time.sleep(5)
         self.start_referencing_components()
-
-    
-
