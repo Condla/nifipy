@@ -7,6 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+BASE = "Base"
 PROCESSOR = "Processor"
 FLOW = "Flow"
 CONTROLLER_SERVICE = "Controller Service"
@@ -20,6 +21,7 @@ component_types = [
 class NifiConnection(object):
  
     COMPONENT_ENDPOINT_TEMPLATES = {
+        BASE: "{url_base}/nifi-api",
         PROCESSOR: "{url_base}/nifi-api/processors/{component_id}",
         CONTROLLER_SERVICE: "{url_base}/nifi-api/controller-services/{component_id}",
         FLOW: "{url_base}/nifi-api/flow/process-groups/{process_group}/{subpath}"
@@ -29,6 +31,12 @@ class NifiConnection(object):
 
     def __init__(self, url_base):
         self.url_base = url_base
+        url = self.COMPONENT_ENDPOINT_TEMPLATES[BASE].format(url_base=self.url_base)
+        try:
+            response = self._get(url)
+        except:
+            raise ConnectionError("Could not connect to endpoint: {}. Make sure you enter 'http://', specify your hostname and the port, e.g. http://myhost.example.com:9090".format(url))
+
 
     def get_processor(self, processor_id):
         return Processor(self, processor_id)
@@ -68,7 +76,8 @@ class NifiConnection(object):
         response_dict = self.get_info(url)
         request_dict = {}
         request_dict["component"] = {
-                "id": response_dict["component"]["id"]
+                "id": response_dict["component"]["id"],
+                "name": response_dict["component"]["name"]
                 }
         request_dict["revision"] = {
                 "version": response_dict["revision"]["version"]
@@ -111,10 +120,16 @@ class NifiComponent(object):
         self.url = self.template.format(url_base=self.url_base, component_id=component_id)
 
     def __str__(self):
-        return "{}: url: {}".format(self.__class__, self.url)
+        return "url: {}".format(self.url)
 
     def __repr__(self):
-        return "{}: url: {}".format(self.__class__, self.url)
+        return "url: {}".format(self.url)
+
+    def get_info(self):
+        return self.nifi_connection.get_info(self.url)
+
+    def get_min_info(self):
+        return self.nifi_connection.get_min_info(self.url)
 
 
 class ProcessGroup(NifiComponent):
