@@ -14,7 +14,7 @@ Feel free to add more functionality from the API
 ```
 git clone https://www.github.com/condla/nifipy
 cd nifipy
-pip install nifipy
+pip install nifipy .
 ```
 
 ## Usage
