@@ -36,8 +36,23 @@ def main(component, action, verbose: ("prints more info", "flag", "v"), componen
             else:
                 pprint.pprint(cs.get_min_info())
 
+        if action == "enable":
+            if not component_id:
+                raise Exception("Specify component_id when using 'get'!")
+            cs = con.get_controller_service(component_id)
+            cs.enable()
 
+        if action == "restart":
+            if not component_id:
+                raise Exception("Specify component_id when using 'get'!")
+            cs = con.get_controller_service(component_id)
+            cs.restart()
 
+        if action == "disable":
+            if not component_id:
+                 raise Exception("Specify component_id when using 'get'!")
+            cs = con.get_controller_service(component_id)
+            cs.disable()
 
 def __main__():
     import plac

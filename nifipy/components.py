@@ -72,6 +72,17 @@ class NifiConnection(object):
         response = self._get(url)
         return response.json()
 
+    def get_update_info(self, url):
+        response_dict = self.get_info(url)
+        request_dict = {}
+        request_dict["component"] = {
+                "id": response_dict["component"]["id"],
+                }
+        request_dict["revision"] = {
+                "version": response_dict["revision"]["version"]
+                }
+        return request_dict
+    
     def get_min_info(self, url):
         response_dict = self.get_info(url)
         request_dict = {}
@@ -85,7 +96,7 @@ class NifiConnection(object):
         return request_dict
 
     def change_state(self, url, state):
-        request_dict = self.get_min_info(url)
+        request_dict = self.get_update_info(url)
         request_dict["component"]["state"] = state
         response = self._post(url, data = json.dumps(request_dict))
         logger.info(response.status_code)
