@@ -17,6 +17,8 @@ cd nifipy
 pip install nifipy .
 ```
 
+The module depends on the requests module as well as on the plac module.
+
 ## Usage
 
 * Set environment variable NIFI_URL or specify it using the `-nifiurl` flag.
@@ -85,4 +87,4 @@ pr.stop()
 export URL_BASE="http://nifi.example.com:9090"
 export CONTROLLER_ID="02439ee-015c-1000-ffff-ffffc7e2dd96"
 ./restart_controller.py
-````` ```````
+```
