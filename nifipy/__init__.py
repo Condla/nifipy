@@ -1,5 +1,6 @@
 import pprint
 import logging
+from nifipy.components import NifiConnection
 logging.basicConfig()  
 logging.getLogger().setLevel(logging.DEBUG) 
 requests_log = logging.getLogger("requests.packages.urllib3") 
@@ -16,7 +17,6 @@ except:
 def main(component, action, verbose: ("prints more info", "flag", "v"), component_id=None, nifiurl: ("NIFI_URL", "option")=nifi_url):
     if not nifi_url:
         raise Exception("Either specify nifiurl argument or set environment variable NIFI_URL")
-    from nifipy.components import NifiConnection
     con = NifiConnection(nifiurl)
   
     if component == "controller-service":

@@ -59,6 +59,8 @@ nifipy controller-service restart "f8a5b234-015c-1000-0000-00000b5bbbf6" -v
 
 ## Python API Examples
 
+This is great to use in Python programs, but also great for interactive usage with tools like IPython.
+
 * Get all controller services of root process group:
 ```
 from nifipy import NifiConnection
@@ -80,11 +82,4 @@ from nifipy import NifiConnection
 con = NifiConnection("http://nifi.example.com:9090")
 pr = con.get_processor("02439ee-015c-1000-ffff-ffffc7e2dd96")
 pr.stop()
-```
-
-* The script `restart_controller.py` requires two environment variables:
-```
-export URL_BASE="http://nifi.example.com:9090"
-export CONTROLLER_ID="02439ee-015c-1000-ffff-ffffc7e2dd96"
-./restart_controller.py
 ```
