@@ -58,7 +58,12 @@ nifipy controller-service list -v
 
 * Restarts controller service with specific ID:
 ```
-nifipy controller-service restart "f8a5b234-015c-1000-0000-00000b5bbbf6" -v
+nifipy controller-service restart f8a5b234-015c-1000-0000-00000b5bbbf6
+```
+
+* Get information about a single controller-service:
+```
+nifipy controller-service get f8a5b234-015c-1000-0000-00000b5bbbf6
 ```
 
 
