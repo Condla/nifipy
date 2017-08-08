@@ -9,6 +9,11 @@ At the moment, only basic functionality is provided:
 
 Feel free to add more functionality from the API
 
+## Prerequisites
+
+* A Nifi instance is up and running. https://nifi.apache.org/
+* No authentication is required to access Nifi-API
+
 ## Installation
 
 ```
