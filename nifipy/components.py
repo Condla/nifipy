@@ -37,7 +37,6 @@ class NifiConnection(object):
         except:
             raise ConnectionError("Could not connect to endpoint: {}. Make sure you enter 'http://', specify your hostname and the port, e.g. http://myhost.example.com:9090".format(url))
 
-
     def get_processor(self, processor_id):
         return Processor(self, processor_id)
 
@@ -72,11 +71,12 @@ class NifiConnection(object):
         response = self._get(url)
         return response.json()
 
-    def get_update_info(self, url):
+    def get_state(self, url):
         response_dict = self.get_info(url)
         request_dict = {}
         request_dict["component"] = {
                 "id": response_dict["component"]["id"],
+                "state": response_dict["component"]["state"]
                 }
         request_dict["revision"] = {
                 "version": response_dict["revision"]["version"]
@@ -95,13 +95,16 @@ class NifiConnection(object):
                 }
         return request_dict
 
-    def change_state(self, url, state):
-        request_dict = self.get_update_info(url)
-        request_dict["component"]["state"] = state
-        response = self._post(url, data = json.dumps(request_dict))
-        logger.info(response.status_code)
-        if not response.status_code == 200:
-            print(response.text)
+    def change_state(self, url, state, forbidden_initial_state=None):
+        request_dict = self.get_state(url)
+        if forbidden_initial_state and request_dict["component"]["state"] == forbidden_initial_state:
+            logger.info("Can't change from {} to {} in this request. Method does not support this!".format(forbidden_initial_state, state))
+        else:
+            request_dict["component"]["state"] = state
+            response = self._post(url, data = json.dumps(request_dict))
+            logger.info(response.status_code)
+            if not response.status_code == 200:
+                print(response.text)
 
     def get_referencing_components(self, url):
         request_dict = self.get_info(url)
@@ -122,7 +125,7 @@ class NifiConnection(object):
 class NifiComponent(object):
 
     component_type = None
-    
+
     def __init__(self, nifi_connection, component_id):
         self.component_id = component_id
         self.nifi_connection = nifi_connection
@@ -150,7 +153,6 @@ class ProcessGroup(NifiComponent):
         NifiComponent.__init__(self, nifi_connection, process_group_id)
 
 
-
 class Processor(NifiComponent):
 
     component_type = "Processor"
@@ -161,15 +163,15 @@ class Processor(NifiComponent):
     def start(self):
         logger.info("starting {}".format(self))
         self.nifi_connection.change_state(self.url, "RUNNING")
-    
+
     def stop(self):
         logger.info("stopping {}".format(self))
-        self.nifi_connection.change_state(self.url, "STOPPED")
-    
+        self.nifi_connection.change_state(self.url, "STOPPED", "DISABLED")
+
     def enable(self):
         logger.info("enabling {}".format(self))
-        self.nifi_connection.change_state(self.url, "STOPPED")
-    
+        self.nifi_connection.change_state(self.url, "STOPPED", "RUNNING")
+
     def disable(self):
         logger.info("disabling {}".format(self))
         self.nifi_connection.change_state(self.url, "DISABLED")
@@ -178,7 +180,7 @@ class Processor(NifiComponent):
         self.stop()
         time.sleep(5)
         self.start()
-    
+
 
 class ControllerService(NifiComponent):
 
@@ -186,7 +188,7 @@ class ControllerService(NifiComponent):
 
     def __init__(self, nifi_connection, controller_service_id):
         NifiComponent.__init__(self, nifi_connection, controller_service_id)
-    
+
 
     def get_referencing_components(self):
         return self.nifi_connection.get_referencing_components(self.url)
@@ -194,14 +196,14 @@ class ControllerService(NifiComponent):
 
     def stop_referencing_components(self):
         [ component.stop() for component in self.get_referencing_components() ]
-    
+
     def start_referencing_components(self):
         [ component.start() for component in self.get_referencing_components() ]
-    
+
     def enable(self):
         logger.info("enabling {}".format(self))
         self.nifi_connection.change_state(self.url, "ENABLED")
-    
+
     def disable(self):
         logger.info("disabling {}".format(self))
         self.nifi_connection.change_state(self.url, "DISABLED")
