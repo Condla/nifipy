@@ -162,7 +162,7 @@ class Processor(NifiComponent):
 
     def start(self):
         logger.info("starting {}".format(self))
-        self.nifi_connection.change_state(self.url, "RUNNING")
+        self.nifi_connection.change_state(self.url, "RUNNING", "DISABLED")
 
     def stop(self):
         logger.info("stopping {}".format(self))
@@ -174,7 +174,7 @@ class Processor(NifiComponent):
 
     def disable(self):
         logger.info("disabling {}".format(self))
-        self.nifi_connection.change_state(self.url, "DISABLED")
+        self.nifi_connection.change_state(self.url, "DISABLED", "RUNNING")
 
     def restart(self):
         self.stop()
