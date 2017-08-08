@@ -15,7 +15,7 @@ except:
 
 
 def main(component, action, verbose: ("prints more info", "flag", "v"), component_id=None, nifiurl: ("NIFI_URL", "option")=nifi_url):
-    if not nifi_url:
+    if not nifiurl:
         raise Exception("Either specify nifiurl argument or set environment variable NIFI_URL")
     con = NifiConnection(nifiurl)
   
