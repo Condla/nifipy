@@ -1,6 +1,6 @@
 import pprint
 import logging
-from nifipy.components import NifiConnection
+from nifipy.components import NifiConnection, ProcessGroup
 logging.basicConfig()  
 logging.getLogger().setLevel(logging.DEBUG) 
 requests_log = logging.getLogger("requests.packages.urllib3") 
@@ -18,8 +18,13 @@ def main(component, action, verbose: ("prints more info", "flag", "v"), componen
     if not nifiurl:
         raise Exception("Either specify nifiurl argument or set environment variable NIFI_URL")
     con = NifiConnection(nifiurl)
-  
-    if component == "controller-service":
+
+    if component == "process-group":
+        if action == "upload-template":
+            pg = ProcessGroup(con, "root")
+
+
+    elif component == "controller-service":
         if action == "list":
             css = con.get_controller_services()
             if verbose: 

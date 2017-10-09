@@ -52,21 +52,6 @@ class NifiConnection(object):
     def get_controller_service(self, controller_service_id):
         return ControllerService(self, controller_service_id)
 
-    def get_controller_services(self, process_group = "root"):
-        url_template = self.COMPONENT_ENDPOINT_TEMPLATES[FLOW]
-        url = url_template.format(url_base=self.url_base, process_group=process_group, subpath="controller-services")
-        response = self._get(url)
-        response_json = response.json()
-        controller_service_ids = [
-                controller_service["component"]["id"] 
-                for controller_service in response_json["controllerServices"]
-                ]
-        controller_services = [
-                ControllerService(self, controller_service_id) 
-                for controller_service_id in controller_service_ids
-                ] 
-        return controller_services
-
     def _get(self, url):
         return requests.get(url)
 
@@ -134,6 +119,7 @@ class NifiConnection(object):
         referencing_components = referencing_processors
         return referencing_components
 
+
 class NifiComponent(object):
 
     component_type = None
@@ -157,6 +143,29 @@ class NifiComponent(object):
 
     def get_min_info(self):
         return self.nifi_connection.get_min_info(self.url)
+
+
+class Flow(NifiComponent):
+
+    component_type = "Flow"
+
+    def __init__(self, nifi_connection, process_group_id):
+        NifiComponent.__init__(self, nifi_connection, process_group_id)
+        self.endpoints['controller-services'] = 'controller-services'
+
+    def get_controller_services(self):
+        url = self.url + self.endpoints['controller-services']
+        response = self.nifi_connection._get(url)
+        response_json = response.json()
+        controller_service_ids = [
+            controller_service["component"]["id"]
+            for controller_service in response_json["controllerServices"]
+        ]
+        controller_services = [
+            ControllerService(self.nifi_connection, controller_service_id)
+            for controller_service_id in controller_service_ids
+        ]
+        return controller_services
 
 
 class ProcessGroup(NifiComponent):
@@ -218,6 +227,7 @@ class Processor(NifiComponent):
 
     def disable(self):
         logger.info("disabling {}".format(self))
+
         self.nifi_connection.change_state(self.url, "DISABLED", "RUNNING")
 
     def restart(self):
