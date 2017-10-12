@@ -2,6 +2,8 @@ import time
 import json
 import logging
 import requests
+import re
+from os.path import basename
 
 LOGGER = logging.getLogger(__name__)
 
@@ -9,6 +11,8 @@ BASE = "Base"
 PROCESSOR = "Processor"
 FLOW = "Flow"
 CONTROLLER_SERVICE = "Controller Service"
+PROCESS_GROUP = "Process Group"
+TEMPLATE = "Template"
 
 COMPONENT_TYPES = [
     PROCESSOR,
@@ -22,7 +26,9 @@ class NifiConnection(object):
         BASE: "{url_base}/nifi-api",
         PROCESSOR: "{url_base}/nifi-api/processors/{component_id}",
         CONTROLLER_SERVICE: "{url_base}/nifi-api/controller-services/{component_id}",
-        FLOW: "{url_base}/nifi-api/flow/process-groups/{process_group}/{subpath}"
+        FLOW: "{url_base}/nifi-api/flow/process-groups/{component_id}/",
+        PROCESS_GROUP: "{url_base}/nifi-api/process-groups/{component_id}/",
+        TEMPLATE: "{url_base}/nifi-api/templates/{component_id}/",
         }
 
     # TODO: handle authentication and security features in this class as well!
@@ -66,8 +72,14 @@ class NifiConnection(object):
     def _get(self, url):
         return requests.get(url)
 
-    def _post(self, url, data):
+    def _put(self, url, data):
         return requests.put(url, data=data, headers={"Content-Type": "application/json"})
+
+    def _post(self, url, data):
+        return requests.post(url, data=data, headers={"Content-Type": "application/json", 'Connection': 'keep-alive'})
+
+    def _upload(self, url, files):
+        return requests.post(url, files=files)
 
     def get_info(self, url):
         response = self._get(url)
@@ -127,6 +139,7 @@ class NifiConnection(object):
         referencing_components = referencing_processors
         return referencing_components
 
+
 class NifiComponent(object):
 
     component_type = None
@@ -137,6 +150,7 @@ class NifiComponent(object):
         self.url_base = self.nifi_connection.url_base
         self.template = self.nifi_connection.COMPONENT_ENDPOINT_TEMPLATES[self.component_type]
         self.url = self.template.format(url_base=self.url_base, component_id=component_id)
+        self.endpoints = {}
 
     def __str__(self):
         return "url: {}".format(self.url)
@@ -151,11 +165,65 @@ class NifiComponent(object):
         return self.nifi_connection.get_min_info(self.url)
 
 
+class Flow(NifiComponent):
+
+    component_type = "Flow"
+
+    def __init__(self, nifi_connection, process_group_id):
+        NifiComponent.__init__(self, nifi_connection, process_group_id)
+        self.endpoints['controller-services'] = 'controller-services'
+
+    def get_controller_services(self):
+        url = self.url + self.endpoints['controller-services']
+        response = self.nifi_connection._get(url)
+        response_json = response.json()
+        controller_service_ids = [
+            controller_service["component"]["id"]
+            for controller_service in response_json["controllerServices"]
+        ]
+        controller_services = [
+            ControllerService(self.nifi_connection, controller_service_id)
+            for controller_service_id in controller_service_ids
+        ]
+        return controller_services
+
+
 class ProcessGroup(NifiComponent):
+
     component_type = "Process Group"
 
     def __init__(self, nifi_connection, process_group_id):
         NifiComponent.__init__(self, nifi_connection, process_group_id)
+        self.endpoints['upload_template'] = "templates/upload"
+        self.endpoints['initialize_template'] = "template-instance"
+
+    def upload_template(self, template_path):
+        url = self.url + self.endpoints['upload_template']
+        files = [('template', (basename(template_path), open(template_path, 'rb'), 'text/xml'))]
+        response = self.nifi_connection._upload(url, files)
+        template_id = re.findall('<id>(.*)</id>', response.text)[0]
+        return template_id
+
+    def initialize_template(self, template_id, origin_x=0, origin_y=0):
+        url = self.url + self.endpoints['initialize_template']
+        data = '{"templateId":"' + template_id + '","originX":'+str(origin_x)+',"originY":'+str(origin_y)+'}'
+        response = self.nifi_connection._post(url, data)
+        process_group_id = json.loads(response.text)['flow']['processGroups'][0]['id']
+        return process_group_id
+
+
+class Template(NifiComponent):
+
+    component_type = "Template"
+
+    def __init__(self, nifi_connection, template_id):
+        NifiComponent.__init__(self, nifi_connection, template_id)
+        self.endpoints['download'] = "download"
+
+    def download(self):
+        url = self.url + self.endpoints['download']
+        response = self.nifi_connection._get(url)
+        return response.text
 
 
 class Processor(NifiComponent):
