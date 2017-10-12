@@ -11,12 +11,14 @@ BASE = "Base"
 PROCESSOR = "Processor"
 FLOW = "Flow"
 CONTROLLER_SERVICE = "Controller Service"
+CONTROLLER_SERVICES = "Controller Services"
 PROCESS_GROUP = "Process Group"
 TEMPLATE = "Template"
 
 COMPONENT_TYPES = [
     PROCESSOR,
     CONTROLLER_SERVICE,
+    CONTROLLER_SERVICES,
     FLOW
     ]
 
@@ -28,6 +30,7 @@ class NifiConnection(object):
         CONTROLLER_SERVICE: "{url_base}/nifi-api/controller-services/{component_id}",
         FLOW: "{url_base}/nifi-api/flow/process-groups/{component_id}/",
         PROCESS_GROUP: "{url_base}/nifi-api/process-groups/{component_id}/",
+        CONTROLLER_SERVICES: "{url_base}/nifi-api/flow/process-groups/{process_group}/{subpath}",
         TEMPLATE: "{url_base}/nifi-api/templates/{component_id}/",
         }
 
@@ -53,7 +56,7 @@ class NifiConnection(object):
         return ControllerService(self, controller_service_id)
 
     def get_controller_services(self, process_group = "root"):
-        url_template = self.COMPONENT_ENDPOINT_TEMPLATES[FLOW]
+        url_template = self.COMPONENT_ENDPOINT_TEMPLATES[CONTROLLER_SERVICES]
         url = url_template.format(url_base=self.url_base,
                                   process_group=process_group,
                                   subpath="controller-services")
@@ -70,7 +73,7 @@ class NifiConnection(object):
         return controller_services
 
     def _get(self, url):
-        return requests.get(url)
+        return requests.get(url, verify=False)
 
     def _put(self, url, data):
         return requests.put(url, data=data, headers={"Content-Type": "application/json"})
