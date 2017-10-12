@@ -1,58 +1,77 @@
 import pprint
+import os
 import logging
 from nifipy.components import NifiConnection
-logging.basicConfig()  
-logging.getLogger().setLevel(logging.DEBUG) 
-requests_log = logging.getLogger("requests.packages.urllib3") 
-requests_log.setLevel(logging.ERROR) 
-requests_log.propagate = True 
+logging.basicConfig()
+logging.getLogger().setLevel(logging.DEBUG)
+REQUESTS_LOG = logging.getLogger("requests.packages.urllib3")
+REQUESTS_LOG.setLevel(logging.ERROR)
+REQUESTS_LOG.propagate = True
 
-import os
 try:
-    nifi_url = os.environ["NIFI_URL"]
-except:
-    nifi_url = None
+    NIFI_URL = os.environ["NIFI_URL"]
+except KeyError:
+    NIFI_URL = None
+
+def print_component_json(component, verbose):
+    if isinstance(component, list):
+        if verbose:
+            pprint.pprint([c.get_info() for c in component])
+        else:
+            pprint.pprint([c.get_min_info() for c in component])
+    else:
+        if verbose:
+            pprint.pprint(component.get_info())
+        else:
+            pprint.pprint(component.get_min_info())
 
 
-def main(component, action, verbose: ("prints more info", "flag", "v"), component_id=None, nifiurl: ("NIFI_URL", "option")=nifi_url):
+def check_component_id(component_id):
+    if not component_id:
+        raise Exception("Specify component_id when using 'get'!")
+
+
+def main(
+        component,
+        action,
+        verbose: ("prints more info", "flag", "v"),
+        component_id=None,
+        nifiurl: ("NIFI_URL", "option")=NIFI_URL):
+
     if not nifiurl:
         raise Exception("Either specify nifiurl argument or set environment variable NIFI_URL")
     con = NifiConnection(nifiurl)
-  
+
     if component == "controller-service":
         if action == "list":
             css = con.get_controller_services()
-            if verbose: 
-                pprint.pprint([cs.get_info() for cs in css])
-            else:
-                pprint.pprint([cs.get_min_info() for cs in css])
+            print_component_json(css, verbose)
 
         if action == "get":
-            if not component_id:
-                raise Exception("Specify component_id when using 'get'!")
-            cs= con.get_controller_service(component_id)
-            if verbose: 
-                pprint.pprint(cs.get_info())
-            else:
-                pprint.pprint(cs.get_min_info())
+            check_component_id(component_id)
+            controller_service = con.get_controller_service(component_id)
+            print_component_json(controller_service, verbose)
 
         if action == "enable":
-            if not component_id:
-                raise Exception("Specify component_id when using 'get'!")
-            cs = con.get_controller_service(component_id)
-            cs.enable()
+            check_component_id(component_id)
+            controller_service = con.get_controller_service(component_id)
+            controller_service.enable()
 
         if action == "restart":
-            if not component_id:
-                raise Exception("Specify component_id when using 'get'!")
-            cs = con.get_controller_service(component_id)
-            cs.restart()
+            check_component_id(component_id)
+            controller_service = con.get_controller_service(component_id)
+            controller_service.restart()
 
         if action == "disable":
-            if not component_id:
-                 raise Exception("Specify component_id when using 'get'!")
-            cs = con.get_controller_service(component_id)
-            cs.disable()
+            check_component_id(component_id)
+            controller_service = con.get_controller_service(component_id)
+            controller_service.disable()
+
+    if component == "processor":
+        if action == "get":
+            check_component_id(component_id)
+            processor = con.get_processor(component_id)
+            print_component_json(processor, verbose)
 
 def __main__():
     import plac
