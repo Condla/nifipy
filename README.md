@@ -19,7 +19,7 @@ Feel free to add more functionality from the API
 ```
 git clone https://www.github.com/condla/nifipy
 cd nifipy
-pip install -e nifipy .
+pip install -e .
 ```
 
 The module depends on the requests module as well as on the plac module.
